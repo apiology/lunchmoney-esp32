@@ -116,7 +116,7 @@ void setup() {
   boardLogDisplayInfo();
 
   lv_obj_t* screen = lv_screen_active();
-  lv_obj_set_style_bg_color(screen, lv_color_hex(0x101418), 0);
+  lv_obj_set_style_bg_color(screen, lv_color_hex(0xFFFFFF), 0);
   lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
 
   budget_ui.begin(screen);

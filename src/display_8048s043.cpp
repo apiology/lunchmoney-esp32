@@ -40,6 +40,8 @@ static constexpr uint32_t kDrawBufLines = 80;
 static lv_obj_t* scroll_target = nullptr;
 static int touch_last_x = 0;
 static int touch_last_y = 0;
+static int drag_start_x = 0;
+static int drag_start_y = 0;
 static int32_t drag_last_y = 0;
 static int32_t scroll_velocity = 0;
 static int32_t last_drag_dy = 0;
@@ -52,6 +54,7 @@ static constexpr int32_t kMaxScrollVelocity = 140;
 static constexpr int32_t kScrollFrictionPct = 98;
 static constexpr uint32_t kInertiaStepMs = 16;
 static constexpr int32_t kReleaseBoostPct = 200;
+static constexpr int32_t kTapMoveThreshold = 24;
 
 static void touchDebug(const char* msg) {
   if (touch_debug) {
@@ -195,7 +198,7 @@ void boardInitDisplay() {
       1, 14000000, true);
 
   gfx->begin();
-  gfx->fillScreen(BLACK);
+  gfx->fillScreen(WHITE);
   dispLogf("display: panel %dx%d fb=%p", gfx->width(), gfx->height(), gfx->getFramebuffer());
 }
 
@@ -265,17 +268,35 @@ void boardPollTouchScroll() {
 
   if (!touch->isTouched) {
     if (drag_active) {
-      if (scroll_velocity == 0 && last_drag_dy != 0) {
-        scroll_velocity = last_drag_dy;
-      }
-      if (scroll_velocity != 0) {
-        scroll_velocity = (scroll_velocity * kReleaseBoostPct) / 100;
-        if (scroll_velocity > kMaxScrollVelocity) {
-          scroll_velocity = kMaxScrollVelocity;
-        } else if (scroll_velocity < -kMaxScrollVelocity) {
-          scroll_velocity = -kMaxScrollVelocity;
+      const int32_t total_dx = touch_last_x - drag_start_x;
+      const int32_t total_dy = drag_last_y - drag_start_y;
+      const int32_t abs_dx = total_dx < 0 ? -total_dx : total_dx;
+      const int32_t abs_dy = total_dy < 0 ? -total_dy : total_dy;
+
+      if (abs_dx <= kTapMoveThreshold && abs_dy <= kTapMoveThreshold) {
+        lv_area_t area;
+        lv_obj_get_coords(scroll_target, &area);
+        const int mid_y = (area.y1 + area.y2) / 2;
+        const int32_t page_h = lv_obj_get_height(scroll_target);
+        const int32_t scroll_dy = (drag_start_y <= mid_y) ? -page_h : page_h;
+        lv_obj_scroll_by_bounded(scroll_target, 0, scroll_dy, LV_ANIM_OFF);
+        scroll_velocity = 0;
+        last_drag_dy = 0;
+        touchDebugf("touch: tap %s page dy=%d y=%d",
+                    scroll_dy < 0 ? "up" : "down", scroll_dy, drag_start_y);
+      } else {
+        if (scroll_velocity == 0 && last_drag_dy != 0) {
+          scroll_velocity = last_drag_dy;
         }
-        last_inertia_ms = 0;
+        if (scroll_velocity != 0) {
+          scroll_velocity = (scroll_velocity * kReleaseBoostPct) / 100;
+          if (scroll_velocity > kMaxScrollVelocity) {
+            scroll_velocity = kMaxScrollVelocity;
+          } else if (scroll_velocity < -kMaxScrollVelocity) {
+            scroll_velocity = -kMaxScrollVelocity;
+          }
+          last_inertia_ms = 0;
+        }
       }
     }
     drag_active = false;
@@ -300,6 +321,8 @@ void boardPollTouchScroll() {
 
   if (!drag_active) {
     drag_active = true;
+    drag_start_x = x;
+    drag_start_y = y;
     drag_last_y = y;
     scroll_velocity = 0;
     last_drag_dy = 0;

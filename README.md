@@ -67,9 +67,9 @@ Legacy envs may need extra work; `main.cpp` is currently written for `8048s043`.
 
 ## What it shows
 
-- Budget categories for the current month (with a budget set)
-- Progress bar and spent / left (or over)
-- Sorted by least remaining first
+- Expense budget categories for the current month (with a budget set)
+- Progress bar uses spent plus upcoming recurring; “left” matches [Lunch Buddy](https://github.com/astiskala/lunch-buddy)
+- Sorted: over-budget first (worst overage), then categories with budget left (no 🗓️/🍾/🔒 suffix before suffixed names, most available first), then $0 left
 - Touch scroll (GT911)
 - Refreshes every **3 hours** on WiFi
 
@@ -81,7 +81,7 @@ Legacy envs may need extra work; `main.cpp` is currently written for `8048s043`.
 
 ## API
 
-Uses Lunch Money API v1 `GET /v1/budgets` for the current calendar month.
+Uses Lunch Money API v2 (`/summary`, `/categories`, `/recurring_items`) for the current calendar month, with the same budget-left math as Lunch Buddy (including upcoming recurring).
 
 ## License
 
