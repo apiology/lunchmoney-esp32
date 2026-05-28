@@ -8,21 +8,23 @@ struct BudgetItem {
   String name;
   float budget = 0;
   float spent = 0;
+  float upcoming = 0;
   float remaining = 0;
+  float available = 0;
+  bool has_available = false;
+  bool schedule_suffix = false;
   int order = 0;
 };
-
-enum class FetchStatus { Idle, Fetching, Ok, WifiError, HttpError, ParseError };
 
 class LunchMoneyClient {
  public:
   void begin(const char* api_key);
   bool fetchCurrentMonth(std::vector<BudgetItem>& out, String& error);
+  static String decodeEntities(const char* raw);
 
  private:
-  String api_key_;
+  const char* api_key_ = nullptr;
   void monthRange(char* start_date, size_t start_len, char* end_date, size_t end_len);
-  static String decodeEntities(const char* raw);
   static int daysInMonth(int year, int month);
 };
 
