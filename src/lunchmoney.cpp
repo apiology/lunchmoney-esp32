@@ -13,6 +13,8 @@
 #include <cstring>
 #include <time.h>
 
+void uiPumpDuringFetch();
+
 namespace {
 
 constexpr const char* kApiBase = "https://api.lunchmoney.dev/v2";
@@ -661,12 +663,14 @@ bool LunchMoneyClient::fetchCurrentMonth(std::vector<BudgetItem>& out, String& e
   if (!httpGet(api_key_, summary_url, body, error, http_code)) {
     return false;
   }
+  uiPumpDuringFetch();
   const String summary_body = body;
 
   const String categories_url = String(kApiBase) + "/categories?format=flattened";
   if (!httpGet(api_key_, categories_url, body, error, http_code)) {
     return false;
   }
+  uiPumpDuringFetch();
 
   std::vector<CategoryMeta> categories;
   if (!parseCategories(body, categories, error)) {
@@ -678,6 +682,7 @@ bool LunchMoneyClient::fetchCurrentMonth(std::vector<BudgetItem>& out, String& e
   if (!httpGet(api_key_, recurring_url, body, error, http_code)) {
     return false;
   }
+  uiPumpDuringFetch();
 
   std::vector<RecurringExpense> recurring;
   if (!parseRecurringItems(body, recurring, error)) {
@@ -748,7 +753,50 @@ void BudgetUI::makePointerTransparent(lv_obj_t* obj) {
   }
 }
 
+void BudgetUI::setRefreshing(bool on) {
+  if (!scroll_container_) {
+    return;
+  }
+
+  if (!refresh_overlay_) {
+    refresh_overlay_ = lv_obj_create(parent_);
+    lv_obj_set_width(refresh_overlay_, lv_pct(100));
+    lv_obj_set_height(refresh_overlay_,
+                      lv_display_get_vertical_resolution(nullptr) - kStatusBarHeight);
+    lv_obj_align(refresh_overlay_, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_style_bg_color(refresh_overlay_, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_bg_opa(refresh_overlay_, LV_OPA_60, 0);
+    lv_obj_set_style_border_width(refresh_overlay_, 0, 0);
+    lv_obj_remove_flag(refresh_overlay_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(refresh_overlay_, LV_OBJ_FLAG_CLICKABLE);
+
+    refresh_spinner_ = lv_spinner_create(refresh_overlay_);
+    lv_obj_set_size(refresh_spinner_, 72, 72);
+    lv_obj_center(refresh_spinner_);
+    lv_spinner_set_anim_params(refresh_spinner_, 900, 200);
+    lv_obj_set_style_arc_color(refresh_spinner_, lv_palette_main(LV_PALETTE_BLUE),
+                               LV_PART_INDICATOR);
+    lv_obj_add_flag(refresh_overlay_, LV_OBJ_FLAG_HIDDEN);
+  }
+
+  if (on) {
+    lv_obj_remove_flag(refresh_overlay_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(refresh_overlay_);
+  } else {
+    lv_obj_add_flag(refresh_overlay_, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
+void BudgetUI::pumpUi(int frames) {
+  for (int i = 0; i < frames; i++) {
+    lv_tick_inc(5);
+    lv_task_handler();
+    delay(5);
+  }
+}
+
 void BudgetUI::begin(lv_obj_t* parent) {
+  parent_ = parent;
   status_label_ = lv_label_create(parent);
   lv_label_set_text(status_label_, "Starting...");
   lv_obj_set_width(status_label_, lv_pct(100));

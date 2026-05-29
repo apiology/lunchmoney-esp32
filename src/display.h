@@ -7,6 +7,7 @@ lv_display_t* boardInitLvgl();
 void boardInitTouch();
 void boardSetScrollTarget(lv_obj_t* scroll_obj);
 void boardPollTouchScroll();
+bool boardConsumeDoubleTap();
 void boardFlushPendingScroll();
 void boardPollScrollInertia();
 bool boardScrollActive();
