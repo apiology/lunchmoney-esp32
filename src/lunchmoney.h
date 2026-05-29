@@ -32,12 +32,17 @@ class BudgetUI {
  public:
   void begin(lv_obj_t* parent);
   void setStatus(const char* text);
+  void setRefreshing(bool on);
+  void pumpUi(int frames = 4);
   void setItems(const std::vector<BudgetItem>& items);
   lv_obj_t* scrollContainer() const { return scroll_container_; }
 
  private:
+  lv_obj_t* parent_ = nullptr;
   lv_obj_t* status_label_ = nullptr;
   lv_obj_t* scroll_container_ = nullptr;
+  lv_obj_t* refresh_overlay_ = nullptr;
+  lv_obj_t* refresh_spinner_ = nullptr;
   void clearRows();
   static void formatMoney(char* buf, size_t len, float amount);
   static void makePointerTransparent(lv_obj_t* obj);

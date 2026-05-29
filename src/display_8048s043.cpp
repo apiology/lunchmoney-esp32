@@ -56,6 +56,21 @@ static constexpr uint32_t kInertiaStepMs = 16;
 static constexpr int32_t kReleaseBoostPct = 200;
 static constexpr int32_t kTapMoveThreshold = 24;
 
+static constexpr int32_t kTapMaxMovePx = 24;
+static constexpr uint32_t kTapMaxDurationMs = 350;
+static constexpr uint32_t kDoubleTapGapMs = 450;
+static constexpr int32_t kDoubleTapMaxDistPx = 48;
+
+static bool tap_tracking = false;
+static int32_t tap_down_x = 0;
+static int32_t tap_down_y = 0;
+static uint32_t tap_down_ms = 0;
+static int32_t tap_max_move = 0;
+static int32_t last_tap_x = 0;
+static int32_t last_tap_y = 0;
+static uint32_t last_tap_ms = 0;
+static bool double_tap_ready = false;
+
 static void touchDebug(const char* msg) {
   if (touch_debug) {
     Serial.println(msg);
@@ -81,6 +96,23 @@ static void touchDebugf(const char* fmt, ...) {
   vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
   Serial.println(buf);
+}
+
+static void registerTap(int x, int y, uint32_t now_ms) {
+  if (last_tap_ms != 0 && (now_ms - last_tap_ms) <= kDoubleTapGapMs) {
+    const int32_t dx = x - last_tap_x;
+    const int32_t dy = y - last_tap_y;
+    if ((dx < 0 ? -dx : dx) <= kDoubleTapMaxDistPx &&
+        (dy < 0 ? -dy : dy) <= kDoubleTapMaxDistPx) {
+      double_tap_ready = true;
+      last_tap_ms = 0;
+      touchDebug("touch: double-tap detected");
+      return;
+    }
+  }
+  last_tap_x = x;
+  last_tap_y = y;
+  last_tap_ms = now_ms;
 }
 
 static void mapTouchPoint(int& x, int& y) {
@@ -267,6 +299,14 @@ void boardPollTouchScroll() {
   touch->read();
 
   if (!touch->isTouched) {
+    if (tap_tracking && tap_max_move <= kTapMaxMovePx) {
+      const uint32_t now_ms = millis();
+      if ((now_ms - tap_down_ms) <= kTapMaxDurationMs) {
+        registerTap(tap_down_x, tap_down_y, now_ms);
+      }
+    }
+    tap_tracking = false;
+
     if (drag_active) {
       const int32_t total_dx = touch_last_x - drag_start_x;
       const int32_t total_dy = drag_last_y - drag_start_y;
@@ -316,6 +356,7 @@ void boardPollTouchScroll() {
   if (!in_scroll_area) {
     drag_active = false;
     scroll_velocity = 0;
+    tap_tracking = false;
     return;
   }
 
@@ -326,7 +367,24 @@ void boardPollTouchScroll() {
     drag_last_y = y;
     scroll_velocity = 0;
     last_drag_dy = 0;
+    tap_tracking = true;
+    tap_down_x = x;
+    tap_down_y = y;
+    tap_down_ms = millis();
+    tap_max_move = 0;
     return;
+  }
+
+  if (tap_tracking) {
+    const int32_t dx = x - tap_down_x;
+    const int32_t dy_from_down = y - tap_down_y;
+    const int32_t dist = (dx < 0 ? -dx : dx) + (dy_from_down < 0 ? -dy_from_down : dy_from_down);
+    if (dist > tap_max_move) {
+      tap_max_move = dist;
+    }
+    if (tap_max_move > kTapMaxMovePx) {
+      tap_tracking = false;
+    }
   }
 
   const int32_t dy = drag_last_y - y;
@@ -344,6 +402,16 @@ void boardPollTouchScroll() {
   }
 
   pending_scroll_dy += dy;
+}
+
+bool boardConsumeDoubleTap() {
+  if (!double_tap_ready) {
+    return false;
+  }
+  double_tap_ready = false;
+  scroll_velocity = 0;
+  pending_scroll_dy = 0;
+  return true;
 }
 
 void boardFlushPendingScroll() {

@@ -25,6 +25,8 @@
 
 #define LV_USE_LABEL 1
 #define LV_USE_BAR 1
+#define LV_USE_ARC 1
+#define LV_USE_SPINNER 1
 #define LV_USE_FLEX 1
 
 #define LV_USE_THEME_DEFAULT 1

@@ -68,6 +68,8 @@ static bool connectWifi() {
   return false;
 }
 
+void uiPumpDuringFetch() { budget_ui.pumpUi(8); }
+
 void refreshBudgets(bool force = false) {
   if (WiFi.status() != WL_CONNECTED) {
     return;
@@ -82,7 +84,9 @@ void refreshBudgets(bool force = false) {
   }
 
   fetching = true;
-  budget_ui.setStatus("Fetching budgets...");
+  budget_ui.setStatus("Refreshing...");
+  budget_ui.setRefreshing(true);
+  budget_ui.pumpUi(6);
 
   String error;
   if (lunchmoney.fetchCurrentMonth(budgets, error)) {
@@ -95,6 +99,8 @@ void refreshBudgets(bool force = false) {
     budget_ui.setStatus(error.c_str());
   }
 
+  budget_ui.setRefreshing(false);
+  budget_ui.pumpUi(4);
   fetching = false;
 }
 
@@ -102,7 +108,7 @@ void setup() {
   Serial.begin(115200);
   delay(500);
   Serial.println("lunchmoney-esp32 starting");
-  Serial.println("touch debug: open monitor at 115200, drag the budget list");
+  Serial.println("touch: drag to scroll, double-tap list to refresh from network");
 
   lv_init();
   boardInitDisplay();
@@ -151,6 +157,9 @@ void loop() {
   }
 
   boardPollTouchScroll();
+  if (boardConsumeDoubleTap()) {
+    refreshBudgets(true);
+  }
   boardFlushPendingScroll();
   boardPollScrollInertia();
 
