@@ -69,7 +69,7 @@ Legacy envs may need extra work; `main.cpp` is currently written for `8048s043`.
 
 - Expense budget categories for the current month (with a budget set)
 - Progress bar uses spent plus upcoming recurring; “left” matches [Lunch Buddy](https://github.com/astiskala/lunch-buddy)
-- Sorted: over-budget first (worst overage), then categories with budget left (no 🗓️/🍾/🔒 suffix before suffixed names, most available first), then $0 left
+- Sorted: over-budget first (worst overage), then categories with budget left (no 🗓️/🍾/🔒/🤧 suffix before suffixed names, most available first), then $0 left
 - Touch scroll (GT911)
 - Refreshes every **3 hours** on WiFi
 
