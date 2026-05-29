@@ -60,6 +60,8 @@ static constexpr int32_t kTapMaxMovePx = 24;
 static constexpr uint32_t kTapMaxDurationMs = 350;
 static constexpr uint32_t kDoubleTapGapMs = 450;
 static constexpr int32_t kDoubleTapMaxDistPx = 48;
+// Top/bottom bands page the list; the middle band is for double-tap refresh only.
+static constexpr int32_t kPageZonePct = 40;
 
 static bool tap_tracking = false;
 static int32_t tap_down_x = 0;
@@ -299,14 +301,6 @@ void boardPollTouchScroll() {
   touch->read();
 
   if (!touch->isTouched) {
-    if (tap_tracking && tap_max_move <= kTapMaxMovePx) {
-      const uint32_t now_ms = millis();
-      if ((now_ms - tap_down_ms) <= kTapMaxDurationMs) {
-        registerTap(tap_down_x, tap_down_y, now_ms);
-      }
-    }
-    tap_tracking = false;
-
     if (drag_active) {
       const int32_t total_dx = touch_last_x - drag_start_x;
       const int32_t total_dy = drag_last_y - drag_start_y;
@@ -316,14 +310,29 @@ void boardPollTouchScroll() {
       if (abs_dx <= kTapMoveThreshold && abs_dy <= kTapMoveThreshold) {
         lv_area_t area;
         lv_obj_get_coords(scroll_target, &area);
-        const int mid_y = (area.y1 + area.y2) / 2;
         const int32_t page_h = lv_obj_get_height(scroll_target);
-        const int32_t scroll_dy = (drag_start_y <= mid_y) ? -page_h : page_h;
-        lv_obj_scroll_by_bounded(scroll_target, 0, scroll_dy, LV_ANIM_OFF);
-        scroll_velocity = 0;
-        last_drag_dy = 0;
-        touchDebugf("touch: tap %s page dy=%d y=%d",
-                    scroll_dy < 0 ? "up" : "down", scroll_dy, drag_start_y);
+        const int32_t rel_y = drag_start_y - area.y1;
+        const int32_t zone_top = page_h * kPageZonePct / 100;
+        const int32_t zone_bottom = page_h - zone_top;
+
+        if (rel_y < zone_top) {
+          lv_obj_scroll_by_bounded(scroll_target, 0, -page_h, LV_ANIM_OFF);
+          scroll_velocity = 0;
+          last_drag_dy = 0;
+          last_tap_ms = 0;
+          touchDebugf("touch: tap up page dy=%d y=%d", -page_h, drag_start_y);
+        } else if (rel_y >= zone_bottom) {
+          lv_obj_scroll_by_bounded(scroll_target, 0, page_h, LV_ANIM_OFF);
+          scroll_velocity = 0;
+          last_drag_dy = 0;
+          last_tap_ms = 0;
+          touchDebugf("touch: tap down page dy=%d y=%d", page_h, drag_start_y);
+        } else if (tap_tracking && tap_max_move <= kTapMaxMovePx) {
+          const uint32_t now_ms = millis();
+          if ((now_ms - tap_down_ms) <= kTapMaxDurationMs) {
+            registerTap(tap_down_x, tap_down_y, now_ms);
+          }
+        }
       } else {
         if (scroll_velocity == 0 && last_drag_dy != 0) {
           scroll_velocity = last_drag_dy;
@@ -339,6 +348,7 @@ void boardPollTouchScroll() {
         }
       }
     }
+    tap_tracking = false;
     drag_active = false;
     return;
   }
