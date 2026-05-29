@@ -108,7 +108,7 @@ void setup() {
   Serial.begin(115200);
   delay(500);
   Serial.println("lunchmoney-esp32 starting");
-  Serial.println("touch: drag to scroll, double-tap list to refresh from network");
+  Serial.println("touch: drag to scroll, tap top/bottom to page, double-tap center to refresh");
 
   lv_init();
   boardInitDisplay();
