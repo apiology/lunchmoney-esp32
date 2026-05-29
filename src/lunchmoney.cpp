@@ -234,7 +234,7 @@ bool isTrailingWhitespaceCodepoint(uint32_t cp) {
 }
 
 bool isScheduleSuffixCodepoint(uint32_t cp) {
-  return cp == 0x1F5D3 || cp == 0x1F37E || cp == 0x1F512;
+  return cp == 0x1F5D3 || cp == 0x1F37E || cp == 0x1F512 || cp == 0x1F927;
 }
 
 bool hasScheduleSuffixAtEnd(const char* raw) {
